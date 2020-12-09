@@ -1,5 +1,6 @@
 package com.iuvya.springsecuritystudy.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -9,6 +10,8 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+
+import java.io.PrintWriter;
 
 /**
  * @author ziyou
@@ -41,18 +44,36 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .formLogin()
                 .loginPage("/login.html")
-                //.loginProcessingUrl("/doLogin")
-                //.usernameParameter("name")
-                //.passwordParameter("pwd")
-                //
-                .defaultSuccessUrl("/index")
+                .successHandler((req, resp, authentication) -> {
+                    Object principal = authentication.getPrincipal();
+                    resp.setContentType("application/json;charset=utf-8");
+                    PrintWriter out = resp.getWriter();
+                    out.write(new ObjectMapper().writeValueAsString(principal));
+                    out.flush();
+                    out.close();
+                })
                 // successForwardUrl 表示不管你是从哪里来的，登录后一律跳转到 successForwardUrl 指定的地址
                 //.successForwardUrl("/index")
-                .failureForwardUrl("/errorMsg")
+                .failureHandler((req, resp, e) -> {
+                    resp.setContentType("application/json;charset=utf-8");
+                    PrintWriter out = resp.getWriter();
+                    out.write(e.getMessage());
+                    out.flush();
+                    out.close();
+                })
                 //.failureUrl("/errorMsg")
                 .permitAll()
                 .and()
                 .logout()
+                .logoutUrl("/logout")
+                .logoutSuccessHandler((req, resp, authentication) -> {
+                    resp.setContentType("application/json;charset=utf-8");
+                    PrintWriter out = resp.getWriter();
+                    out.write("注销成功");
+                    out.flush();
+                    out.close();
+                })
+                .permitAll()
 /*                .logoutUrl("/logout")
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout","POST"))
                 // 表示注销成功后要跳转的页面。
@@ -64,7 +85,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .invalidateHttpSession(true)
                 .permitAll()*/
                 .and()
-                .csrf().disable();
+                .csrf().disable().exceptionHandling()
+                .authenticationEntryPoint((req, resp, authException) -> {
+                            resp.setContentType("application/json;charset=utf-8");
+                            PrintWriter out = resp.getWriter();
+                            out.write("尚未登录，请先登录");
+                            out.flush();
+                            out.close();
+                        }
+                );
 
     }
 
